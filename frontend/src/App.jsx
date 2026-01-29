@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const REMOTE_IP = '150.129.165.162';
+const REMOTE_IP = import.meta.env.VITE_SERVER_IP || '150.129.165.162';
 const LOCAL_IP = 'localhost';
 
 function App() {
@@ -9,23 +9,34 @@ function App() {
     const [inputText, setInputText] = useState('');
     const [dataList, setDataList] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [customIp, setCustomIp] = useState(localStorage.getItem('saved_ip') || REMOTE_IP);
 
-    const activeIp = connectionMode === 'remote' ? REMOTE_IP : LOCAL_IP;
-    const API_URL = `http://${activeIp}:5000/api/data`;
+    const activeIp = connectionMode === 'remote' ? customIp : LOCAL_IP;
+
+    // Ensure the URL has a protocol. If the user is on HTTPS (Netlify), 
+    // they might need to use HTTPS for their server too, or a proxy.
+    const getApiUrl = () => {
+        const protocol = (customIp.startsWith('http') || connectionMode === 'local') ? '' : 'http://';
+        const port = activeIp.includes(':') ? '' : ':5000';
+        return `${protocol}${activeIp}${port}/api/data`;
+    };
+
+    const API_URL = getApiUrl();
 
     const fetchData = async () => {
         try {
-            const response = await axios.get(API_URL);
+            const response = await axios.get(API_URL, { timeout: 5000 });
             setDataList(response.data || []);
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Fetch error:', error);
             setDataList([]);
         }
     };
 
     useEffect(() => {
+        localStorage.setItem('saved_ip', customIp);
         fetchData();
-    }, [connectionMode]);
+    }, [connectionMode, customIp]);
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -37,7 +48,8 @@ function App() {
             setInputText('');
             fetchData();
         } catch (error) {
-            alert('Error saving data');
+            console.error('Save error:', error);
+            alert(`Error saving data: ${error.message}\n\nNote: If you are on HTTPS (Netlify), your browser might block calls to an HTTP server (Mixed Content). Try using a direct IP without HTTPS or use a proxy.`);
         }
         setIsLoading(false);
     };
@@ -66,35 +78,61 @@ function App() {
                         MongoBridge Dashboard
                     </h1>
 
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                        <button
-                            onClick={() => setConnectionMode('remote')}
-                            style={{
-                                padding: '10px 20px',
-                                background: connectionMode === 'remote' ? '#6366f1' : '#1e293b',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            Remote Server ({REMOTE_IP})
-                        </button>
-                        <button
-                            onClick={() => setConnectionMode('local')}
-                            style={{
-                                padding: '10px 20px',
-                                background: connectionMode === 'local' ? '#6366f1' : '#1e293b',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            Local Server
-                        </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                                onClick={() => setConnectionMode('remote')}
+                                style={{
+                                    padding: '10px 20px',
+                                    background: connectionMode === 'remote' ? '#6366f1' : '#1e293b',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Remote Server
+                            </button>
+                            <button
+                                onClick={() => setConnectionMode('local')}
+                                style={{
+                                    padding: '10px 20px',
+                                    background: connectionMode === 'local' ? '#6366f1' : '#1e293b',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Local Server
+                            </button>
+                        </div>
+
+                        {connectionMode === 'remote' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '14px', color: '#64748b' }}>Server IP/URL:</span>
+                                <input
+                                    type="text"
+                                    value={customIp}
+                                    onChange={(e) => setCustomIp(e.target.value)}
+                                    style={{
+                                        padding: '8px 12px',
+                                        background: '#1e293b',
+                                        border: '1px solid #334155',
+                                        borderRadius: '6px',
+                                        color: 'white',
+                                        width: '200px'
+                                    }}
+                                    placeholder="e.g. 150.129.165.162"
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>
+                        Target API: <code style={{ color: '#818cf8' }}>{API_URL}</code>
                     </div>
                 </div>
 
