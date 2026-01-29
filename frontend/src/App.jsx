@@ -13,9 +13,14 @@ function App() {
 
     const activeIp = connectionMode === 'remote' ? customIp : LOCAL_IP;
 
-    // Ensure the URL has a protocol. If the user is on HTTPS (Netlify), 
-    // they might need to use HTTPS for their server too, or a proxy.
     const getApiUrl = () => {
+        // If we're on Netlify (HTTPS), we use the /proxy path we set up in netlify.toml
+        // to bypass "Mixed Content" blocks.
+        if (window.location.hostname.includes('netlify.app') && connectionMode === 'remote') {
+            return '/proxy/data';
+        }
+
+        // Otherwise (on localhost), we talk to the server directly
         const protocol = (customIp.startsWith('http') || connectionMode === 'local') ? '' : 'http://';
         const port = activeIp.includes(':') ? '' : ':5000';
         return `${protocol}${activeIp}${port}/api/data`;

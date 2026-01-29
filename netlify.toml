@@ -3,6 +3,14 @@
   command = "npm run build"
   publish = "dist"
 
+# This is the "God-mode" fix for Mixed Content
+# It creates a proxy from Netlify (HTTPS) to your Server (HTTP)
+[[redirects]]
+  from = "/proxy/*"
+  to = "http://150.129.165.162:5000/api/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
